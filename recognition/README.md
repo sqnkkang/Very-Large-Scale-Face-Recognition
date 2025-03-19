@@ -43,7 +43,8 @@ CASIA-WebFace/
 
 LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且大大降低了直接读取照片带来的I/O开销，读取数据通过内存映射实现。速度更加的快。以下是构建 LMDB 数据库的步骤：
 
-- 安装 pillow 和 lmdb 库：`conda install pillow lmdb`
+- 安装 pillow 和 lmdb 库：`conda install pillow lmdb`。
+- 运行 creat_lmdb.py 创建 LMDB 数据库和 KV 文件，LMDB 存储实际的二进制数据（比如图片的二进制表示），KV 文件负责记录数据的索引以及其对应的标签信息。
 - 
 
 ## 配置参数
