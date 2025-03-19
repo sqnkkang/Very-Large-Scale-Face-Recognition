@@ -7,7 +7,7 @@
 ### 硬件配置
 ```python
 RTX 3070Ti
-cuda126 + cuDNN
+cuda126 + 对应版本的cuDNN
 ```
 
 ### 项目环境
@@ -27,6 +27,6 @@ tqdm
 
 ## 构建步骤
 
-本文受[Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/)文章的启发，主要用作作者学习使用
+本文受[Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/)与[FFC](https://github.com/tiandunx/FFC/)文章的启发，主要用作作者学习使用
 
 ## 致谢
