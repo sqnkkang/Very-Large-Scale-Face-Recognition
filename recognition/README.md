@@ -27,7 +27,7 @@ tqdm
 2025-03-19 先使用 CASIA-WebFace 进行试验，CASIA-WebFace文件的格式如下：
 
 ```
-dataset/
+CASIA-WebFace/
   ├── id1/
   │   ├── image1.jpg
   │   ├── image2.jpg
