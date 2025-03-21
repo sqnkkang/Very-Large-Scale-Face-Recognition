@@ -1,8 +1,7 @@
 import os
 import lmdb
 import cv2
-from datum import Datum
-
+from datum_pb2 import Datum
 
 class LMDB:
     '''
@@ -20,7 +19,7 @@ class LMDB:
     '''
     def put(self, k, v):
         if k in self.kv:
-            print('%s is already in the db.' % k)
+            print('%s 已经存在 db 数据库里面' % k)
         else:
             self.kv[k] = v
             if len(self.kv) >= self.buf_size:
@@ -130,6 +129,7 @@ if __name__ == '__main__':
     '''
     建议按照我这个路径存储数据库的文件，直接执行当前的文件即可
     '''
-    image_src_dir = '../data'
-    path_to_lmdb = '../data/lmdb'
+    image_src_dir = './data'
+    path_to_lmdb = './lmdb'
     make_lmdb(image_src_dir, path_to_lmdb, 'train')
+    print("创建成功")
