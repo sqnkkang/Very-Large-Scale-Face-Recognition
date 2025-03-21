@@ -15,7 +15,7 @@ def read_lmdb(lmdb_path, kv_file_path):
         key, label = line.strip().split()
         value = txn.get(key.encode('utf-8'))
         if value is None:
-            print(f"Key {key} 不在 lmdb 数据库里面")
+            print(f"Key {key} is not in lmdb")
             continue
         '''
         反序列化 datum 对象，解码图片数据，进行展示输出
