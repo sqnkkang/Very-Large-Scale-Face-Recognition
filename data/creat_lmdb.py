@@ -1,7 +1,7 @@
 import os
 import lmdb
 import cv2
-from datum_pb2 import Datum
+from datum_def_pb2 import Datum
 
 class LMDB:
     '''
