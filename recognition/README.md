@@ -13,6 +13,7 @@ cuda126 + 对应版本的cuDNN
 ### 项目环境
 ```python
 numpy                     1.26.3
+opencv-python             4.11.0.86
 pillow                    11.0.0
 lmdb                      0.9.29
 python                    3.9.21
@@ -45,9 +46,11 @@ LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且
 
 - 安装 pillow 和 lmdb 库：`conda install pillow lmdb`。
 - 运行 creat_lmdb.py 创建 LMDB 数据库和 KV 文件，LMDB 存储实际的二进制数据（比如图片的二进制表示），KV 文件负责记录数据的索引以及其对应的标签信息。
-- 
+- 详细的代码在 data 文件夹下，先将自己的数据集拉到 data 下面并且将自己数据集的根目录改名为 data，之后创建 lmdb，测试创建是否成功即可
 
 ## 配置参数
+
+
 
 ## 构建步骤
 
