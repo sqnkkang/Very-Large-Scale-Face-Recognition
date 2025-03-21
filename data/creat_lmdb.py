@@ -2,6 +2,7 @@ import os
 import lmdb
 import cv2
 from datum_def_pb2 import Datum
+from tqdm import tqdm
 
 class LMDB:
     '''
@@ -28,7 +29,7 @@ class LMDB:
     重写 commit，发现当前的 kv 文件里面有值并且调用 commit 函数，证明需要提交
     打开当前的环境进行写入即可，要是抛出异常，发现当前的空间太小，终止我们的写入，扩充空间，重新设置数据库的大小
     然后再次执行当前的函数，将剩余的部分 commit 进去
-    
+
     写完之后尝试提交，抛出异常的话执行一样的操作，清空临时的 kv 键值对字典
     '''
     def commit(self):
@@ -39,7 +40,7 @@ class LMDB:
                     txn.put(k, v)
                 except lmdb.MapFullError:
                     txn.abort()
-                    self.map_size = self.map_size * 3 // 2  # double map size and recommit
+                    self.map_size = self.map_size * 3 // 2
                     self.env.set_mapsize(self.map_size)
                     self.commit()
                     return
@@ -59,23 +60,6 @@ class LMDB:
     def close(self):
         self.commit()
         self.env.close()
-'''
-图片的文件需要按照下面的形式
-image_root
-    sub_dir1
-         --1.jpg
-         --2.jpg
-    sub_dir2
-         --1.jpg
-         --2.jpg
-         --3.jpg
-    ...
-    sub_dirn
-         --1.jpg
-         --2.jpg
-         --3.jpg
-每个 sub_dir 是同一个类别
-'''
 def make_lmdb(image_src_dir, path_to_lmdb, db_name):
     '''
     得到当前的根目录下面的所有 sub_dir，然后构建数据库，以及构建 kv 文件
@@ -84,7 +68,7 @@ def make_lmdb(image_src_dir, path_to_lmdb, db_name):
     db = LMDB(path_to_lmdb)
     kv = open(os.path.join(path_to_lmdb, '%s_kv.txt' % db_name), 'w')
     next_label = 0
-    for d in dirs:
+    for d in tqdm(dirs, desc="Processing", ascii=True, leave=True):
         '''
         构建完整的 sub_dir 路径
         '''
