@@ -3,7 +3,7 @@ import argparse
 import logging as logger
 from optim import get_optim_scheduler
 from resnet_def import create_net
-from ffc_ddp import FFC
+from ffc import FFC
 import torch
 from torch.utils.data import DataLoader
 from util import *
@@ -14,12 +14,6 @@ import time
 from util.config_helper import load_config
 from tqdm import tqdm
 
-'''
-添加日志文件记录训练的日志，调用 logger.info 函数，会将函数里面的输出，输出到日志里面，并带有下面初始化的信息
-'''
-logger.basicConfig(level=logger.INFO,
-                   format='%(levelname)s %(asctime)s %(filename)s: %(lineno)d] %(message)s',
-                   datefmt='%Y-%m-%d %H:%M:%S')
 def get_lr(optimizer):
     '''
     从优化器里面获得当前的学习率
@@ -38,7 +32,7 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
 
     db_size = len(instance_loader)
     start_time = time.time()
-    for batch_idx, (ins_images, instance_label, _) in tqdm(enumerate(instance_loader), total=len(instance_loader), desc=f'Epoch {cur_epoch}', ascii=True, leave=True):
+    for batch_idx, (ins_images, instance_label, _) in tqdm(enumerate(instance_loader), total=len(instance_loader), desc=f'Epoch {cur_epoch}/{max_epochs}', ascii=True, leave=True):
         '''
         id_iter 耗尽的话，重新进行初始化，instance 的批次个数才是我们真正的要循环的，因为 id_iter 不会大于前者
         '''
@@ -79,16 +73,15 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
         '''
         每隔 1000 个 iter 保存我们训练过程中的相关信息
         '''
-        if real_iter % 1000 == 0:
+        if real_iter % 100 == 0:
             loss_val = loss.item()
             lr = lr_scheduler.get_lr()[0]
             duration = time.time() - start_time
             left_time = (max_epochs * db_size - real_iter) * (duration / 1000) / 3600
-            logger.info('Iter %d Loss %.4f Epoch %d/%d Iter %d/%d Left %.2f hours' % (real_iter, loss_val, cur_epoch, max_epochs, batch_idx + 1, db_size, left_time))
             if lr_policy == 'ReduceLROnPlateau':
                 lr_scheduler.step(loss_val)
             start_time = time.time()
-            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 1000))
+            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 100))
             torch.save({'state_dict': ffc_net.probe_net.state_dict(), 'lru': ffc_net.lru.state_dict(), 'fc': ffc_net.queue.cpu(), 'qp': ffc_net.queue_position_dict}, snapshot_path)
     return real_iter
 
@@ -112,10 +105,11 @@ def train(conf):
 
     id_db = PairLMDBDataset(conf.source_lmdb, conf.source_file)
     id_sampler = RandomSampler(id_db)
-    id_loader = DataLoader(id_db, conf.batch_size, sampler=id_sampler, num_workers=8, pin_memory=True, drop_last=False)
+    '''
+    这里，论文和代码不相符，id_loader 应该是 instance_loader 的一半，这样才能实现我们的操作
+    '''
+    id_loader = DataLoader(id_db, conf.batch_size // 2, sampler=id_sampler, num_workers=8, pin_memory=True, drop_last=False)
 
-    logger.info(f'id_loader length: {len(id_loader)}')
-    logger.info(f'instance_loader length: {len(instance_loader)}')
     '''
     将参数传进去构建网络
     '''
@@ -131,7 +125,6 @@ def train(conf):
     optim_config = load_config('config/optim_config')
     optim, lr_scheduler = get_optim_scheduler(ffc_net.parameters(), optim_config)
     real_iter = 0
-    logger.info('enter training procedure...')
     '''
     创建一个梯度缩放器（Gradient Scaler）
     用于在混合精度训练中缩放梯度，以避免梯度下溢问题。混合精度训练是一种通过使用半精度（float16）和单精度（float32）结合的方式来加速训练并减少显存占用的技术
@@ -144,7 +137,7 @@ def train(conf):
         '''
         if optim_config['scheduler'] != 'ReduceLROnPlateau':
             lr_scheduler.update(epoch, 0.0)
-        real_iter = train_one_epoch(id_loader, instance_loader, ffc_net, optim, epoch, conf, conf.saved_dir, real_iter, scaler, optim_config['scheduler'], lr_scheduler, optim_config['warmup'], optim_config['epochs'])
+        real_iter = train_one_epoch(id_loader, instance_loader, ffc_net, optim, epoch + 1, conf, conf.saved_dir, real_iter, scaler, optim_config['scheduler'], lr_scheduler, optim_config['warmup'], optim_config['epochs'])
 
     id_db.close()
     instance_db.close()
@@ -155,12 +148,12 @@ if __name__ == '__main__':
     通过 train_ffc.sh 运行脚本，将参数传递到主函数里面，其中有些参数具有默认值，未进行复制的话按照默认来
     '''
     conf = argparse.ArgumentParser(description='fast face classification.')
-    conf.add_argument('saved_dir', type=str, help='snapshot directory')
-    conf.add_argument('--net_type', type=str, default='mobile', help='backbone type')
-    conf.add_argument('--queue_size', type=int, default=7409, help='size of the queue.')
+    conf.add_argument('--saved_dir', default='checkpoint', type=str, help='saved_dir')
+    conf.add_argument('--net_type', type=str, default='r50', help='backbone type')
+    conf.add_argument('--queue_size', type=int, default=1000, help='size of the queue.')
     conf.add_argument('--print_freq', type=int, default=1000, help='The print frequency for training state.')
     conf.add_argument('--pretrained_model_path', type=str, default='')
-    conf.add_argument('--batch_size', type=int, default=256, help='batch size over all gpus.')
+    conf.add_argument('--batch_size', type=int, default=64, help='batch size over all gpus.')
     conf.add_argument('--alpha', type=float, default=0.99, help='weight of moving_average')
     conf.add_argument('--loss_type', type=str, default='Arc', choices=['Arc', 'AM', 'SV'], help="loss type, can be softmax, am or arc")
     conf.add_argument('--margin', type=float, default=0.5, help='loss margin ')
@@ -172,9 +165,6 @@ if __name__ == '__main__':
     解析上面的参数，下面还添加了新的参数 source_lmdb，lmdb 数据库的位置和 kv 文件的位置，然后进行训练即可
     '''
     args = conf.parse_args()
-    logger.info('Start optimization.')
     args.source_lmdb = ['./data/lmdb']
     args.source_file = ['./data/lmdb/train_kv.txt']
-    logger.info(args)
     train(args)
-    logger.info('Optimization done!')
