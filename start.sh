@@ -1,5 +1,3 @@
-export CUDA_VISIBLE_DEVICES=0
-world_size=1
 exe=main.py
 queue_size=1000
 net_type=r50 # 输入大小为224x224的话，网络选择r50，112x112选择ir50
