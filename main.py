@@ -1,7 +1,7 @@
 import os
 import argparse
 import logging as logger
-from optim.optimizer import get_optim_scheduler
+from optim import get_optim_scheduler
 from resnet_def import create_net
 from ffc_ddp import FFC
 import torch
@@ -12,6 +12,7 @@ from torch.utils.data import RandomSampler
 import random
 import time
 from util.config_helper import load_config
+from tqdm import tqdm
 
 '''
 添加日志文件记录训练的日志，调用 logger.info 函数，会将函数里面的输出，输出到日志里面，并带有下面初始化的信息
@@ -27,8 +28,9 @@ def get_lr(optimizer):
         return param_group['lr']
 def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
                     cur_epoch, conf, saved_dir, real_iter, scaler, lr_policy, lr_scheduler, warmup_epochs, max_epochs):
-    """Train one epoch by traditional training.
-    """
+    '''
+    将数据加载器转换为迭代器，这样每次 next(id_iter) 会返回下一个批次的数据
+    '''
     id_iter = iter(id_loader)
     instance_iter = iter(instance_loader)
     random.seed(cur_epoch)
@@ -36,8 +38,10 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
 
     db_size = len(instance_loader)
     start_time = time.time()
-    for batch_idx, (ins_images, instance_label, _) in enumerate(instance_loader):
-        # Note that label lies at cpu not gpu !!!
+    for batch_idx, (ins_images, instance_label, _) in tqdm(enumerate(instance_loader), total=len(instance_loader), desc=f'Epoch {cur_epoch}', ascii=True, leave=True):
+        '''
+        id_iter 耗尽的话，重新进行初始化，instance 的批次个数才是我们真正的要循环的，因为 id_iter 不会大于前者
+        '''
         if lr_policy != 'ReduceLROnPlateau':
             lr_scheduler.update(None, batch_idx * 1.0 / db_size)
         instance_images = ins_images.cuda(non_blocking=True)
@@ -46,7 +50,9 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
         except:
             id_iter = iter(id_loader)
             images1, images2, id_indexes = next(id_iter)
-
+        '''
+        下面就是论文的核心了，先将我们的 instance 分开，然后和一半的 id 拼在一起
+        '''
         images1_gpu = images1.cuda(non_blocking=True)
         images2_gpu = images2.cuda(non_blocking=True)
 
@@ -58,15 +64,22 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
         y = torch.cat([images2_gpu, instance_images2])
         x_label = torch.cat([id_indexes, instance_label1])
         y_label = torch.cat([id_indexes, instance_label2])
-
+        '''
+        使用混合精度前向传播并且计算损失
+        '''
         with torch.amp.autocast('cuda'):
             loss = ffc_net(x, y, x_label, y_label)
+        '''
+        反向传播和参数更新
+        '''
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
         real_iter += 1
-
-        if real_iter % 1 == 0:
+        '''
+        每隔 1000 个 iter 保存我们训练过程中的相关信息
+        '''
+        if real_iter % 1000 == 0:
             loss_val = loss.item()
             lr = lr_scheduler.get_lr()[0]
             duration = time.time() - start_time
@@ -75,13 +88,9 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
             if lr_policy == 'ReduceLROnPlateau':
                 lr_scheduler.step(loss_val)
             start_time = time.time()
-
-        if real_iter % 1 == 0:
-            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 2000))
+            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 1000))
             torch.save({'state_dict': ffc_net.probe_net.state_dict(), 'lru': ffc_net.lru.state_dict(), 'fc': ffc_net.queue.cpu(), 'qp': ffc_net.queue_position_dict}, snapshot_path)
-
     return real_iter
-
 
 def train(conf):
     '''
@@ -117,16 +126,22 @@ def train(conf):
     '''
     ffc_net = net
     '''
-    加载配置参数文件，加载网络参数
+    加载配置参数文件，加载网络参数，warmup 是预热的轮数
     '''
     optim_config = load_config('config/optim_config')
     optim, lr_scheduler = get_optim_scheduler(ffc_net.parameters(), optim_config)
-
     real_iter = 0
     logger.info('enter training procedure...')
+    '''
+    创建一个梯度缩放器（Gradient Scaler）
+    用于在混合精度训练中缩放梯度，以避免梯度下溢问题。混合精度训练是一种通过使用半精度（float16）和单精度（float32）结合的方式来加速训练并减少显存占用的技术
+    使用 float16 进行前向传播和反向传播，以加速计算并减少显存占用，使用 float32 存储模型参数和梯度，以避免精度损失
+    '''
     scaler = torch.amp.GradScaler('cuda')
-
     for epoch in range(optim_config['epochs']):
+        '''
+        ReduceLROnPlateau 是一种基于指标（如验证集损失）动态调整学习率的调度器，不需要在每个 epoch 开始时手动更新
+        '''
         if optim_config['scheduler'] != 'ReduceLROnPlateau':
             lr_scheduler.update(epoch, 0.0)
         real_iter = train_one_epoch(id_loader, instance_loader, ffc_net, optim, epoch, conf, conf.saved_dir, real_iter, scaler, optim_config['scheduler'], lr_scheduler, optim_config['warmup'], optim_config['epochs'])
