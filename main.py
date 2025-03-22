@@ -2,7 +2,7 @@ import os
 import argparse
 import logging as logger
 from optim import get_optim_scheduler
-from resnet_def import create_net
+from model import create_net
 from ffc import FFC
 import torch
 from torch.utils.data import DataLoader
@@ -11,7 +11,7 @@ import numpy as np
 from torch.utils.data import RandomSampler
 import random
 import time
-from util.config_helper import load_config
+from util.config import load_config
 from tqdm import tqdm
 
 def get_lr(optimizer):
