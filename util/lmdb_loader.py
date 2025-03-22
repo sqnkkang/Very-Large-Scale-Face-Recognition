@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import lmdb
-from data.datum_def_pb2 import Datum
+from data import Datum
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
