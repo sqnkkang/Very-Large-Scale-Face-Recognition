@@ -20,7 +20,7 @@ class LMDB:
     '''
     def put(self, k, v):
         if k in self.kv:
-            print('%s 已经存在 db 数据库里面' % k)
+            print('%s is already in the db.' % k)
         else:
             self.kv[k] = v
             if len(self.kv) >= self.buf_size:
