@@ -73,7 +73,7 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
         '''
         每隔 1000 个 iter 保存我们训练过程中的相关信息
         '''
-        if real_iter % 100 == 0:
+        if real_iter % 1000 == 0:
             loss_val = loss.item()
             lr = lr_scheduler.get_lr()[0]
             duration = time.time() - start_time
@@ -81,7 +81,7 @@ def train_one_epoch(id_loader, instance_loader, ffc_net, optimizer,
             if lr_policy == 'ReduceLROnPlateau':
                 lr_scheduler.step(loss_val)
             start_time = time.time()
-            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 100))
+            snapshot_path = os.path.join(saved_dir, '%d.pt' % (real_iter // 1000))
             torch.save({'state_dict': ffc_net.probe_net.state_dict(), 'lru': ffc_net.lru.state_dict(), 'fc': ffc_net.queue.cpu(), 'qp': ffc_net.queue_position_dict}, snapshot_path)
     return real_iter
 
