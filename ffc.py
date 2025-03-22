@@ -3,7 +3,7 @@ from torch.nn import Module
 import math
 import torch.nn.functional as F
 from lru import LRU
-from resnet_def import create_net
+from model import create_net
 import os
 import logging as logger
 
