@@ -6,4 +6,4 @@
 
 [The Detail of This Project](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/tree/master/recognition)
 
-本文受[Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/)与[FFC](https://github.com/tiandunx/FFC/)的启发，主要用作作者学习使用。
+本文受 [Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/) 与 [FFC](https://github.com/tiandunx/FFC/) 的启发，主要用作作者学习使用。
