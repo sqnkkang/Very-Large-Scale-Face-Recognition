@@ -31,12 +31,12 @@ LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且
 
 你现在已经完成了数据的准备，检查没有问题的话，还剩下：
 
-- 002 >> [模型架构]()
-- 003 >> [数据加载器]()
-- 004 >> [LRU策略]()
-- 005 >> [FFC-DCP动态池]()
-- 006 >> [训练]()
-- 007 >> [测试]()
+- 002 >> [模型架构](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/model.md)
+- 003 >> [数据加载器](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/dataloader.md)
+- 004 >> [LRU策略](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/lru.md)
+- 005 >> [FFC-DCP动态池](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/ffc_dcp.md)
+- 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/train.md)
+- 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/test.md)
 
 ## 4 >> 致谢
 
