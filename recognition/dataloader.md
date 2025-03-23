@@ -7,7 +7,9 @@ instance_loader 获取的人脸数据还是随机获取的，这样将读取到�
 
 ## 2 >> MultiLMDBDataset 类的创建
 
-- \_\_init\_\_ 初始化函数，打开很多个数据库，max_label 和 last_label 的作用的记录当前的数据库的最后一个 label 然后下一个数据库的文件读取编号的时候从当一个位置的下一个位置开始避免重复编。这个类位于 `util/lmdb_loader.py` 实现的功能是加载 instance_loader，论文可以对多个数据库加载，所以实现方法如下：
+这个类位于 `util/lmdb_loader.py` 实现的功能是加载 instance_loader，论文可以对多个数据库加载，所以实现方法如下：
+
+- \_\_init\_\_ 初始化函数，打开很多个数据库，max_label 和 last_label 的作用的记录当前的数据库的最后一个 label 然后下一个数据库的文件读取编号的时候从当一个位置的下一个位置开始避免重复编。
 ```python
 class MultiLMDBDataset(Dataset):
     def __init__(self, source_lmdbs, source_files, feat_lmdbs=None, feat_files=None, transforms=None, return_feats=False):
@@ -109,6 +111,8 @@ for batch in data_loader:
 ## 3 >> PairLMDBDataset 类的创建
 
 这个类位于 `util/lmdb_loader.py` 实现的功能是加载 id_loader，论文可以对多个数据库加载，所以实现方法如下：
+
+可以发现基本上的框架是一致的，这里下面每行我做了解释，如何按照 id 来加载图像的。
 
 ```python
 class PairLMDBDataset(Dataset):
