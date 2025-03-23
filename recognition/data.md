@@ -1,9 +1,11 @@
 # 数据准备
 
-2025-03-19 先使用 CASIA-WebFace 进行试验，CASIA-WebFace文件的格式如下：
+## 1 >> 数据格式
+
+2025-03-19 先使用 CASIA-WebFace 进行试验，CASIA-WebFace文件的格式如下，移动到 data 文件夹下面并改名为 data：
 
 ```
-CASIA-WebFace/
+data/
   ├── id1/
   │   ├── image1.jpg
   │   ├── image2.jpg
@@ -14,6 +16,8 @@ CASIA-WebFace/
   │   └── ...
   └── ...
 ```
+
+## 2 >> 转化 lmdb
 
 先采用的是 CASIA-WebFace 数据集，因为 MS-Celeb-1M 过于庞大，直接使用需要的代价比较高，首先需要先将我们现存的数据集转换为 lmdb 类型的文件。
 
