@@ -6,7 +6,7 @@
 
 ## 2 >> MultiLMDBDataset 类的创建
 
-- {__init__} 初始化函数，打开很多个数据库，max_label 和 last_label 的作用的记录当前的数据库的最后一个 label 然后下一个数据库的文件读取编号的时候从当一个位置的下一个位置开始避免重复编。
+- \{__}init\{__} 初始化函数，打开很多个数据库，max_label 和 last_label 的作用的记录当前的数据库的最后一个 label 然后下一个数据库的文件读取编号的时候从当一个位置的下一个位置开始避免重复编。
 
 这个类位于 `util/lmdb_loader.py` 实现的功能是加载 instance_loader，论文可以对多个数据库加载，所以实现方法如下：
 ```python
