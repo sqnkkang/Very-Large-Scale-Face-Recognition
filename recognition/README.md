@@ -1,6 +1,6 @@
 # Very-Large-Scale-Face-Recognition
 
-## 配置
+## 依赖环境
 
 本项目的使用的硬件和环境的配置如下，其中项目环境使用 Anaconda 进行管理，方便作者环境切换，项目主要使用的 Python 语言和 PyTorch 库。
 
@@ -23,7 +23,7 @@ torchvision               0.21.0+cu126
 tqdm         
 ```
 
-## 配置参数
+## 项目参数
 
 详见 `config/optim_config`
 
