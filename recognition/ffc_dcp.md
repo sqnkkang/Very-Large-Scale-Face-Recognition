@@ -2,10 +2,10 @@
 
 ## 3 >> 构建步骤
 
-你现在已经完成了 DCP 管理动态池训练，检查没有问题的话，还剩下：
+你现在已经完成了 DCP 动态池，检查没有问题的话，还剩下：
 
-- 006 >> [训练]()
-- 007 >> [测试]()
+- 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/train.md)
+- 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/test.md)
 
 ## 4 >> 致谢
 
