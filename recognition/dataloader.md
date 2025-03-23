@@ -2,12 +2,12 @@
 
 ## 3 >> 构建步骤
 
-你现在已经完成了数据加载器，检查没有问题的话，还剩下：
+你现在已经完成了数据加载器类的创建，检查没有问题的话，还剩下：
 
-- 004 >> [LRU策略]()
-- 005 >> [FFC-DCP动态池]()
-- 006 >> [训练]()
-- 007 >> [测试]()
+- 004 >> [LRU策略](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/lru.md)
+- 005 >> [FFC-DCP动态池](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/ffc_dcp.md)
+- 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/train.md)
+- 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/test.md)
 
 ## 4 >> 致谢
 
