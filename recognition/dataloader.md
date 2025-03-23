@@ -131,7 +131,118 @@ class MultiLMDBDataset(Dataset):
                 return ret, label, -1
 ```
 
-## 3 >> 构建步骤
+## 3 >> PairLMDBDataset 类的创建
+
+这个类位于 `util/lmdb_loader.py` 实现的功能是加载 id_loader，论文可以对多个数据库加载，所以实现方法如下：
+
+```python
+class PairLMDBDataset(Dataset):
+    def __init__(self, source_lmdbs, source_files, exclude_id_set=None):
+        '''
+        前面的部分基本上是一样的，先看一下是不是列表，不是的话进行转化
+        '''
+        if (not isinstance(source_lmdbs, list)) and (not isinstance(source_lmdbs, tuple)):
+            source_lmdbs = [source_lmdbs]
+        if (not isinstance(source_files, list)) and (not isinstance(source_files, tuple)):
+            source_files = [source_files]
+        assert len(source_files) == len(source_lmdbs)
+        assert len(source_lmdbs) > 0
+        self.envs = None
+        self.txns = None
+        self.source_lmdbs = source_lmdbs
+        max_label = 0
+        last_label = 0
+        self.label2files = {}
+        self.label_set = []
+        '''
+        这里就非常的不同了，要知道我们这个函数实现的是根据 label 加载图片，上面的函数是随即加载的，所以我们需要构建一个 label 字典，在字典里面的就是我们已经读取到的 label
+        否则就是新的 label 要加到这个字典里面，同样的多个数据库需要动态的增加编号
+        '''
+        for db_id, file_path in enumerate(source_files):
+            with open(file_path, 'r') as fin:
+                for line in fin:
+                    l = line.strip()
+                    if len(l) > 0:
+                        items = l.split(' ')
+                        the_label = int(items[1]) + last_label
+                        if the_label not in self.label2files:
+                            self.label2files[the_label] = [db_id, []]
+                            self.label_set.append(the_label)
+                        self.label2files[the_label][1].append(items[0])
+                        max_label = max(max_label, the_label)
+            max_label += 1
+            last_label = max_label
+    '''
+    有多少人，我们的数据集的大小就是多少，因为我们根据 id 来加载对象的
+    '''
+    def __len__(self):
+        return len(self.label_set)
+    def open_lmdb(self):
+        self.txns = []
+        self.envs = []
+        for lmdb_path in self.source_lmdbs:
+            self.envs.append(lmdb.open(lmdb_path, readonly=True, lock=False, max_readers=4, readahead=False, meminit=False))
+            self.txns.append(self.envs[-1].begin(write=False))
+    def close(self):
+        if self.txns is not None:
+            for i in range(len(self.txns)):
+                self.txns[i].abort()
+                self.envs[i].close()
+    '''
+    先得到我们的标签集合，然后从每个 label 读取我们的图片，前一个 db_id 就是字典里面的每一个键为 label 值的数据库的 id 后一个就是图片地址了
+    要是我们发现当前的 keys >= 2 即每一个 label 的存在的图片比较多，就正常的随机选取两个元素，否则一个元素选取两份
+    接下来就和之前一样进行解码，然后进行我们的图像的处理就行了
+    '''
+    def __getitem__(self, index):
+        if self.txns is None:
+            self.open_lmdb()
+        label = self.label_set[index]
+        db_id, keys = self.label2files[label]
+        if len(keys) >= 2:
+            key1, key2 = sample(keys, 2)
+        else:
+            key1, key2 = keys[0], keys[0]
+        datum = Datum()
+        raw_byte = self.txns[db_id].get(key1.encode('utf-8'))
+        datum.ParseFromString(raw_byte)
+        img = cv2.imdecode(np.frombuffer(datum.data, dtype=np.uint8), -1)
+        p = random()
+        if p < 0.5:
+            img = cv2.flip(img, 1)
+        if img.ndim == 2:
+            buf = np.zeros((3, img.shape[0], img.shape[1]), dtype=np.uint8)
+            buf[0] = img
+            buf[1] = img
+            buf[2] = img
+            tim = torch.from_numpy((buf - 127.5).astype(np.float32) * 0.0078125)
+            img_x = tim
+        else:
+            img = torch.from_numpy((img.transpose((2, 0, 1)).astype(np.float32) - 127.5) * 0.0078125)
+            img_x = img
+        datum2 = Datum()
+        raw_byte = self.txns[db_id].get(key2.encode('utf-8'))
+        datum2.ParseFromString(raw_byte)
+        img2 = cv2.imdecode(np.frombuffer(datum2.data, dtype=np.uint8), -1)
+        p = random()
+        if p < 0.5:
+            img2 = cv2.flip(img2, 1)
+        if img2.ndim == 2:
+            buf = np.zeros((3, img2.shape[0], img2.shape[1]), dtype=np.uint8)
+            buf[0] = img2
+            buf[1] = img2
+            buf[2] = img2
+            tim = torch.from_numpy((buf - 127.5).astype(np.float32) * 0.0078125)
+            img_y = tim
+        else:
+            img2 = torch.from_numpy((img2.transpose((2, 0, 1)).astype(np.float32) - 127.5) * 0.0078125)
+            img_y = img2
+        '''
+        和上一个的返回值略有不同，这里返回的是两张图片和对应的标签，所以 DataLoader 会将 batch_size 个图片拼成一个批次
+        '''
+        return img_x, img_y, label
+```
+
+## 4 >> 构建步骤
 
 你现在已经完成了数据加载器类的创建，检查没有问题的话，还剩下：
 
@@ -140,6 +251,6 @@ class MultiLMDBDataset(Dataset):
 - 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/train.md)
 - 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/test.md)
 
-## 4 >> 致谢
+## 5 >> 致谢
 
 本文受 [Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/) 与 [FFC](https://github.com/tiandunx/FFC/) 的启发，主要用作作者学习使用。
