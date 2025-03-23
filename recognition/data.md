@@ -25,7 +25,7 @@ LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且
 
 - 安装 pillow 和 lmdb 库：`conda install pillow lmdb`。
 - 运行 `creat_lmdb.py` 创建 LMDB 数据库和 KV 文件，LMDB 存储实际的二进制数据（比如图片的二进制表示），KV 文件负责记录数据的索引以及其对应的标签信息。
-- 详细的代码在 data 文件夹下，先将自己的数据集拉到 data 下面并且将自己数据集的根目录改名为 data，之后创建 lmdb，测试创建是否成功即可。
+- 详细的代码在 data 文件夹下，先将自己的数据集拉到 data 下面并且将自己数据集的根目录改名为 data，之后创建 lmdb，运行 `test_lmdb` 测试创建是否成功即可。
 
 ## 3 >> 构建步骤
 
@@ -37,3 +37,7 @@ LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且
 - 005 >> [FFC-DCP动态池]()
 - 006 >> [训练]()
 - 007 >> [测试]()
+
+## 4 >> 致谢
+
+本文受 [Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/) 与 [FFC](https://github.com/tiandunx/FFC/) 的启发，主要用作作者学习使用。
