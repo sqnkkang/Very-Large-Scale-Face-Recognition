@@ -51,23 +51,33 @@ class FFC(Module):
         将 g 网络的参数 初始化为 p 网络的参数，并且冻结 g 网络的梯度
         '''
         for param_p, param_g in zip(self.probe_net.parameters(), self.gallery_net.parameters()):
-            param_g.data.copy_(param_p.data)  # initialize
-            param_g.requires_grad = False  # not update by gradient
+            param_g.data.copy_(param_p.data)
+            param_g.requires_grad = False
     '''
-    下面构建了常见的三个带边界的损失函数，开始是时候先构建正负样本的索引
+    下面构建了常见的三个带边界的损失函数，开始是时候先构建正负样本的索引，存储的是下标，传进来的参数分别是 cos_theta [batch_size, queue_size] 和标签
+    这个感觉也有点问题，虽然 instance 和 id 重复的概率很小，但是要是重复的话，就会把他当作困难的负样本，这是显然不对的，他的 instance 的加载默认为 -1
     '''
     def add_margin(self, cos_theta, label):
         outlier_label = torch.where(label == -1)[0]
         pos_label_idx = torch.where(label != -1)[0]
         '''
         正样本的数量大于 0 个，则计算一下正样本的损失
+        正样本的损失的计算方式为先找到自己的那一行与池子里面的所有的现存的向量之间的夹角，再找到当前的 label 
+        转化为一个大小为 (batch_size, 1) 的张量，然后减去 margin
+        scatter_ 是将特定的值填充到目标张量的指定位置上面，常见的用法就是 tensor.scatter_(dim, index, src) 代表维度、索引、填充的值
+        填充的时候，先将 pos_label_view 转化为一维的索引，表示每个样本的真实类别的标签，即在 pos_cos_theta 的第一个维度上面进行填充
+        最后计算我们的交叉熵损失
+        对于负样本，找到和当前的样本最相似的负样本，即困难的负样本，提取困难负样本的余弦相似度，确保其为负数，负样本的损失就是这些相似度的平均值
+        最后的总的损失就是正负样本损失的和
         '''
         if self.loss_type == 'AM':
             if pos_label_idx.numel() > 0:
                 pos_cos_theta = cos_theta[pos_label_idx]
                 batch_size = pos_cos_theta.shape[0]
                 pos_label = label[pos_label_idx]
-
+                '''
+                找到每个正样本的值，转化为一维的，然后填充回去，其他的添加边距的方法大差不差，不再赘述
+                '''
                 pos_cos_theta_m = pos_cos_theta[torch.arange(batch_size), pos_label].view(-1, 1) - self.margin
                 pos_cos_theta.scatter_(1, pos_label.view(-1, 1), pos_cos_theta_m)
                 cls_loss = F.cross_entropy(pos_cos_theta * self.scale, pos_label)
@@ -129,7 +139,7 @@ class FFC(Module):
     @torch.no_grad()
     def _momentum_update_gallery(self):
         """
-        Momentum update of the key encoder
+        动量继承更新我们的 g 网络
         """
         for param_p, param_g in zip(self.probe_net.parameters(), self.gallery_net.parameters()):
             param_g.data = param_g.data * self.m + param_p.data * (1. - self.m)
@@ -182,7 +192,8 @@ class FFC(Module):
             fake_labels.append(self.lru.view(pl))
 
         label = torch.LongTensor(fake_labels).cuda(p.device)
-        cos_theta1 = F.linear(p, self.queue[0]) 
+        cos_theta1 = F.linear(p, self.queue[0])
+        print(cos_theta1.shape)
         mask_idx = torch.LongTensor(list(ones_idx))
         self.mask[mask_idx, 0] = 1
         with torch.no_grad():
@@ -191,11 +202,13 @@ class FFC(Module):
         loss = self.add_margin(cos_theta1, label) + self.add_margin(cos_theta2, label)
         self.mask[mask_idx, 0] = 0
         return loss
-
+    '''
+    双向对比计算损失，和上面 forward_impl 基本一致
+    '''
     def forward_impl_rollback(self, p_data, g_data, probe_label, gallery_label):
         p = self.probe_net(p_data)
-        with torch.no_grad():  # no gradient to gallery
-            self._momentum_update_gallery() # update the gallery net
+        with torch.no_grad():
+            self._momentum_update_gallery()
             g = self.gallery_net(g_data)
             g_label_list = gallery_label.tolist()
         rows = []
@@ -203,7 +216,7 @@ class FFC(Module):
         old_state = {}
         ones_idx = set([])
         steps = 0
-        for i, gl in enumerate(g_label_list):  # [0, 0, 0, 0,]
+        for i, gl in enumerate(g_label_list):
             if gl not in self.lru:
                 idx = self.lru.try_get(gl)
                 rows.append(0)  
@@ -233,20 +246,21 @@ class FFC(Module):
         label = torch.LongTensor(fake_labels).cuda(p.device)
 
         cos_theta1 = F.linear(p, self.queue[0]) 
-        # mask = mask.cuda(g.device)
         mask_idx = torch.LongTensor(list(ones_idx))
         self.mask[mask_idx, 0] = 1
         with torch.no_grad():
             weight = self.mask * self.queue[1] + (1 - self.mask) * self.queue[0]
         cos_theta2 = F.linear(p, weight)
         loss = self.add_margin(cos_theta1, label) + self.add_margin(cos_theta2, label)
-        self.queue[r, c] = old_tensor  # restore queue state
+        self.queue[r, c] = old_tensor
         for k, v in old_state.items():
             self.queue_position_dict[k] = v
         self.mask[mask_idx, 0] = 0
         self.lru.rollback_steps(steps)
         return loss
-
+    '''
+    对比计算两个损失，进行前向传播
+    '''
     def forward(self, x, y, x_label, y_label):
         loss2 = self.forward_impl_rollback(x, y, x_label, y_label)
         loss1 = self.forward_impl(y, x, y_label, x_label)
