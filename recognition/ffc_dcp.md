@@ -1,8 +1,8 @@
-# ffc_dcp
+# FFC-DCP
 
 ## 1 >> 创建 FFC 类
 
-- \_\_init\_\_ 函数，传递的参数包含很多，主要包含网络的类型，特征维度，DCP 池的大小，损失函数的类型等，初始化里面创建了两个网络，就是论文里面提到的 p 网络和 g 网络，分别进行更新 DCP 和进行梯度下降损失的计算。将这个队列记录为模型的缓冲区不参与梯度的计算，然后对队列里面的特征进行归一化初始的时候先生成随机的张量，之后初始化我们的 lru，下面的 queue_position_sict 是一个字典能记录队列里面每个位置的使用情况，开始的时候两个网络里面的参数相同，冻结我们的 g 网络的参数，因为该网络主要是负责更新 DCP 的。
+\_\_init\_\_ 函数，传递的参数包含很多，主要包含网络的类型，特征维度，DCP 池的大小，损失函数的类型等，初始化里面创建了两个网络，就是论文里面提到的 p 网络和 g 网络，分别进行更新 DCP 和进行梯度下降损失的计算。将这个队列记录为模型的缓冲区不参与梯度的计算，然后对队列里面的特征进行归一化初始的时候先生成随机的张量，之后初始化我们的 lru，下面的 queue_position_sict 是一个字典能记录队列里面每个位置的使用情况，开始的时候两个网络里面的参数相同，冻结我们的 g 网络的参数，因为该网络主要是负责更新 DCP 的。
 
 ```python
 class FFC(Module):
@@ -40,30 +40,18 @@ class FFC(Module):
     ...
 ```
 
-- add_margin 函数，下面构建了常见的三个带边界的损失函数，开始是时候先构建正负样本的索引，存储的是下标，传进来的参数分别是 cos_theta [batch_size, queue_size] 和标签。
+add_margin 函数，下面构建了常见的三个带边界的损失函数，开始是时候先构建正负样本的索引，存储的是下标，传进来的参数分别是 cos_theta [batch_size, queue_size] 和标签。具体的做法是，正样本的数量大于 0 个，则计算一下正样本的损失，计算 batch_size 的时候，先在 cos_theta 里面找到所有的正样本自己的那一行与池子里面的所有的现存的向量之间的夹角，再根据标签，在标签列上面减去 margin。scatter_ 是将特定的值填充到目标张量的指定位置上面，常见的用法就是 tensor.scatter_(dim, index, src) 代表维度、索引、填充的值。填充的时候，先将 pos_label_view 转化为一维的索引，表示每个样本的真实类别的标签，即在 pos_cos_theta 的第一个维度上面进行填充，最后计算我们的交叉熵损失。对于负样本，找到和当前的样本最相似的负样本，即困难的负样本，提取困难负样本的余弦相似度，负样本的损失就是这些相似度的平均值。最后的总的损失就是正负样本损失的和。随机的负样本也不一定是负样本啊，这样不会导致本来相等的类别反而贡献了很大的损失吗。
 
 ```python
     def add_margin(self, cos_theta, label):
         outlier_label = torch.where(label == -1)[0]
         pos_label_idx = torch.where(label != -1)[0]
-        '''
-        正样本的数量大于 0 个，则计算一下正样本的损失
-        正样本的损失的计算方式为先找到自己的那一行与池子里面的所有的现存的向量之间的夹角，再找到当前的 label 
-        转化为一个大小为 (batch_size, 1) 的张量，然后减去 margin
-        scatter_ 是将特定的值填充到目标张量的指定位置上面，常见的用法就是 tensor.scatter_(dim, index, src) 代表维度、索引、填充的值
-        填充的时候，先将 pos_label_view 转化为一维的索引，表示每个样本的真实类别的标签，即在 pos_cos_theta 的第一个维度上面进行填充
-        最后计算我们的交叉熵损失
-        对于负样本，找到和当前的样本最相似的负样本，即困难的负样本，提取困难负样本的余弦相似度，确保其为负数，负样本的损失就是这些相似度的平均值
-        最后的总的损失就是正负样本损失的和
-        '''
         if self.loss_type == 'AM':
             if pos_label_idx.numel() > 0:
                 pos_cos_theta = cos_theta[pos_label_idx]
                 batch_size = pos_cos_theta.shape[0]
                 pos_label = label[pos_label_idx]
-                '''
-                找到每个正样本的值，转化为一维的，然后填充回去，其他的添加边距的方法大差不差，不再赘述
-                '''
+
                 pos_cos_theta_m = pos_cos_theta[torch.arange(batch_size), pos_label].view(-1, 1) - self.margin
                 pos_cos_theta.scatter_(1, pos_label.view(-1, 1), pos_cos_theta_m)
                 cls_loss = F.cross_entropy(pos_cos_theta * self.scale, pos_label)
@@ -124,6 +112,70 @@ class FFC(Module):
             return loss
     ...
 ```
+
+\_momentum_update_gallery 函数，动量继承更新的我们的 g 网络，不是一蹴而就变化的。
+
+```python
+    ...
+    def _momentum_update_gallery(self):
+        for param_p, param_g in zip(self.probe_net.parameters(), self.gallery_net.parameters()):
+            param_g.data = param_g.data * self.m + param_p.data * (1. - self.m)
+    ...
+```
+
+forward_impl 函数，因为我们本来的 batch 就是可以理解为一式两份的，前一份用来更新我们的 DCP，另一份用来更新模型里面的参数，需要注意的是，他的论文原文表述的意思和代码有不相符的地方。接下来判断现在的这个 batch 里面是不是有些人脸没出现在 lru 里面，默认调用 __contains__ 函数，要是有新的人脸没有出现在 lru 里面，将当前位置的 rows 设置为 0，得到当前的 DCP 里面的存储的位置 存储到 cols 里面 这个位置标记为出现在了 DCP 里面，否则的话，直接 get 得到当前的位置，双队列机制能更好的存储更多的特征的信息，避免单一队列的局限性。
+
+看一下 p 标签是不是再 DCP 里面，计算一下 p 特征和队列里面的特征的余弦相似度，主要步骤为先和队列里面的第一行进行计算余弦相似度，然后计算 fake_labels 这个东西队列里面有的话就会返回在队列里面的位置，否则就会返回 -1。mask 通过动态选择队列，增强特征的多样性和模型的表达能力，感觉没什么逻辑，权衡 weight 的时候，被新更改的就用 queue1，没被新更改就用 queue0，感觉没啥逻辑。
+
+```python
+    ...
+    def forward_impl(self, p_data, g_data, probe_label, gallery_label):
+        p = self.probe_net(p_data)
+        with torch.no_grad():
+            g = self.gallery_net(g_data)
+            g_label_list = gallery_label.tolist()
+
+        rows = []
+        cols = []
+        # old_state = {}
+        ones_idx = set([])
+        for i, gl in enumerate(g_label_list):
+            if gl not in self.lru:
+                idx = self.lru.get(gl)
+                rows.append(0)
+                cols.append(idx)
+                self.queue_position_dict[idx] = 1
+            else:
+                idx = self.lru.get(gl)
+                rows.append(self.queue_position_dict[idx])
+                cols.append(idx)
+                ones_idx.add(idx)
+                self.queue_position_dict[idx] = (self.queue_position_dict[idx] + 1) % 2
+
+        r = torch.LongTensor(rows).cuda(g.device)
+        c = torch.LongTensor(cols).cuda(g.device)
+        with torch.no_grad():
+            self.queue[r, c] = g
+
+        fake_labels = []
+        probe_label_list = probe_label.tolist()
+        for pl in probe_label_list:
+            fake_labels.append(self.lru.view(pl))
+
+        label = torch.LongTensor(fake_labels).cuda(p.device)
+        cos_theta1 = F.linear(p, self.queue[0])
+        mask_idx = torch.LongTensor(list(ones_idx))
+        self.mask[mask_idx, 0] = 1
+        with torch.no_grad():
+            weight = self.mask * self.queue[1] + (1 - self.mask) * self.queue[0]
+        cos_theta2 = F.linear(p, weight)
+        loss = self.add_margin(cos_theta1, label) + self.add_margin(cos_theta2, label)
+        self.mask[mask_idx, 0] = 0
+        return loss
+    ...
+```
+
+forward_impl_rollback函数， 双向对比计算损失，和上面 forward_impl 基本一致，但是其计算完损失之后会自动回滚到之前的状态。
 
 ## 2 >> 构建步骤
 
