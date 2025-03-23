@@ -29,8 +29,6 @@ tqdm
 
 ## 构建步骤
 
-本文受[Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/)与[FFC](https://github.com/tiandunx/FFC/)的启发，主要用作作者学习使用
-
 - 1 [数据准备]()
 - 2 [模型架构]()
 - 3 [数据加载器]()
@@ -40,3 +38,5 @@ tqdm
 - 7 [测试]()
 
 ## 致谢
+
+本文受 [Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/) 与 [FFC](https://github.com/tiandunx/FFC/) 的启发，主要用作作者学习使用
