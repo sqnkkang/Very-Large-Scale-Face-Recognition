@@ -2,7 +2,8 @@
 
 ## 1 >> id_loader 和 instance_loader 介绍
 
-论文里面提到了两个网络，称为 g 网络和 p 网络，前者主要管理动态池，使用 id_loader 来根据 id 获取我们想要的人脸数据，instance_loader 获取的人脸数据还是随机获取的，这样将读取到的 batch_size 大小的人脸（id_loader 和 instance_loader 分别读取了一个 batch_size）拆分之后合并就能得到两个分别包含了 一半 id_loadr 一半  instance_loader 的人脸数据，以实现正负样本均衡，保证每个 batch_size 都会有至少一半的正样本，因为 id_loader 分开了一半。
+论文里面提到了两个网络，称为 g 网络和 p 网络，前者主要管理动态池，使用 id_loader 来根据 id 获取我们想要的人脸数据.
+instance_loader 获取的人脸数据还是随机获取的，这样将读取到的 batch_size 大小的人脸（id_loader 和 instance_loader 分别读取了一个 batch_size）拆分之后合并就能得到两个分别包含了 一半 id_loadr 一半  instance_loader 的人脸数据，以实现正负样本均衡，保证每个 batch_size 都会有至少一半的正样本，因为 id_loader 分开了一半。
 
 ## 2 >> MultiLMDBDataset 类的创建
 
@@ -55,6 +56,8 @@ class MultiLMDBDataset(Dataset):
 
             self.envs.append(lmdb.open(lmdb_path, readonly=True, lock=False, max_readers=10, readahead=False, meminit=False))
             self.txns.append(self.envs[-1].begin(write=False, buffers=False))
+            # if self.return_feats and (self.feat_lmdbs is not None and self.feat_files is not None):
+            #     self.feat_db = KVDataset(self.feat_lmdbs, self.feat_files)
 
     def close(self):
         if self.txns is not None:
@@ -65,7 +68,10 @@ class MultiLMDBDataset(Dataset):
             self.feat_db.close()
     ...
 ```
-- \_\_getitem\_\_ 函数，Dataloader加载数据集的时候，__getitem__会被自动调用，他的功能是给定索引 index，从数据集中加载对应的数据，并可以进行必要的预处理，返回值，通常返回一个样本数据和对应的标签，先检查数据库是否被打开，不是的话先打开数据库，从 train_list[index] 获取当前样本对应的信息，即初始化的时候从 kv 文件里面加载的 lmdb_key db_id label 让后加载 Datum 对象，为解码做好准备，下面就是读取了存在对应的数据库里面的加码的数据 raw_byte，之后对其进行解码，到第 96 行完成了数据的读取和解码的工作，当前的 img 就是一个货真价实的图像，DataLoader 的工作原理，现根据 sampler 生成对应的索引序列，再按照批次大小从数据集中加载数据，将多个样本拼接为一个批次，调用 dataset[index] 的时候 \_\_getitem\_\_ 返回一个样本，使用 DataLoader 的时候它会将多个样本拼接为一个批次，假设现在的 batch_size 为 32
+- \_\_getitem\_\_ 函数，Dataloader加载数据集的时候，__getitem__会被自动调用，他的功能是给定索引 index，从数据集中加载对应的数据，并可以进行必要的预处理。
+返回值，通常返回一个样本数据和对应的标签，先检查数据库是否被打开，不是的话先打开数据库，从 train_list[index] 获取当前样本对应的信息，即初始化的时候从 kv 文件里面加载的 lmdb_key db_id label
+之后加载 Datum 对象，为解码做好准备，下面就是读取了存在对应的数据库里面的加码的数据 raw_byte，之后对其进行解码，到第 96 行完成了数据的读取和解码的工作，当前的 img 就是一个货真价实的图像。
+DataLoader 的工作原理，现根据 sampler 生成对应的索引序列，再按照批次大小从数据集中加载数据，将多个样本拼接为一个批次，调用 dataset[index] 的时候 \_\_getitem\_\_ 返回一个样本，使用 DataLoader 的时候它会将多个样本拼接为一个批次，假设现在的 batch_size 为 32
 ```python
 for batch in data_loader:
     images, labels, features = batch
@@ -73,7 +79,8 @@ for batch in data_loader:
     # labels: [32]           # 32 个标签
     # features: [32, ...]    # 32 个特征
 ```
-- RandomSampler 生成一个随机索引序列，例如 [3, 45, 12, ..., 78]，DataLoader 每次从索引序列中取出 batch_size 个索引（如 32 个）对于每个索引，调用 dataset[index] 获取单个样本，了解完上面的逻辑，下面是对图像的处理，首先先对图像 50% 概率进行一次水平的翻转，下面如果发现图像是灰度图将其转化为 3 通道，并对其进行归一化，torch.from_numpy 将其从 Numpy 数组转化为 PyTorch 类型的张量，本身就是彩色图像的话调整通道并进行归一化，特征数据库存在的话返回，否则直接返回 -1
+- RandomSampler 生成一个随机索引序列，例如 [3, 45, 12, ..., 78]，DataLoader 每次从索引序列中取出 batch_size 个索引（如 32 个）对于每个索引，调用 dataset[index] 获取单个样本，了解完上面的逻辑。
+下面是对图像的处理，首先先对图像 50% 概率进行一次水平的翻转，下面如果发现图像是灰度图将其转化为 3 通道，并对其进行归一化，torch.from_numpy 将其从 Numpy 数组转化为 PyTorch 类型的张量，本身就是彩色图像的话调整通道并进行归一化，特征数据库存在的话返回，否则直接返回 -1
 ```python
     ...
     def __getitem__(self, index):
