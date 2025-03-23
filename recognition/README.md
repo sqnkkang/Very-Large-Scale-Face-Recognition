@@ -23,37 +23,20 @@ torchvision               0.21.0+cu126
 tqdm         
 ```
 
-## 数据准备
-
-2025-03-19 先使用 CASIA-WebFace 进行试验，CASIA-WebFace文件的格式如下：
-
-```
-CASIA-WebFace/
-  ├── id1/
-  │   ├── image1.jpg
-  │   ├── image2.jpg
-  │   └── ...
-  ├── id2/
-  │   ├── image1.jpg
-  │   ├── image2.jpg
-  │   └── ...
-  └── ...
-```
-
-先采用的是 CASIA-WebFace 数据集，因为 MS-Celeb-1M 过于庞大，直接使用需要的代价比较高，首先需要先将我们现存的数据集转换为 lmdb 类型的文件。
-
-LMDB 是一个高效的键值对数据库，适合存储大规模数据，并且大大降低了直接读取照片带来的I/O开销，读取数据通过内存映射实现。速度更加的快。以下是构建 LMDB 数据库的步骤：
-
-- 安装 pillow 和 lmdb 库：`conda install pillow lmdb`。
-- 运行 creat_lmdb.py 创建 LMDB 数据库和 KV 文件，LMDB 存储实际的二进制数据（比如图片的二进制表示），KV 文件负责记录数据的索引以及其对应的标签信息。
-- 详细的代码在 data 文件夹下，先将自己的数据集拉到 data 下面并且将自己数据集的根目录改名为 data，之后创建 lmdb，测试创建是否成功即可
-
 ## 配置参数
 
-
+详见 `config/optim_config`
 
 ## 构建步骤
 
 本文受[Build-Your-Own-Face-Model](https://github.com/siriusdemon/Build-Your-Own-Face-Model/)与[FFC](https://github.com/tiandunx/FFC/)的启发，主要用作作者学习使用
+
+- 1 [数据准备]()
+- 2 [模型架构]()
+- 3 [数据加载器]()
+- 4 [LRU策略]()
+- 5 [FFC-DCP动态池]()
+- 6 [训练]()
+- 7 [测试]()
 
 ## 致谢
