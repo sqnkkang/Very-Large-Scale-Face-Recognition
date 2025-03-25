@@ -123,7 +123,7 @@ def make_lmdb(image_src_dir, path_to_lmdb, db_name):
 ```
 #### 2.2 >> `test_lmdb.py` 函数介绍：
 
-创建 `read_lmdb` 函数，该函数先只读打开数据库环境，然后将事务创建为环境的开始位置，使用 `txn.get(key)` 得到编码后的图片信息，之后解码即可，可以使用 `cv2.imshow()` 展示图片的信息，来测试我们是不是创建数据库成功，能够成功的从里面取得数据。
+创建 `read_lmdb` 函数，该函数先只读打开数据库环境，然后将事务创建为环境的开始位置，使用 `txn.get(key)` 得到编码后的图片信息，之后解码即可，可以使用 `cv2.imshow()` 展示图片的信息，来测试我们是不是创建数据库成功，成功的话能够成功的从数据库里面取得图片信息并展示。
 
 ```python
 def read_lmdb(lmdb_path, kv_file_path):
