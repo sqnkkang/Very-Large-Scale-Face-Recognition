@@ -29,8 +29,8 @@ tqdm
 
 ## 3 >> 构建步骤
 
-- 001 >> [数据准备](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/data.md)
-- 002 >> [模型架构](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/model.md)
+- 001 >> [数据准备](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/001.md)
+- 002 >> [模型架构](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/002.md)
 - 003 >> [数据加载器](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/dataloader.md)
 - 004 >> [LRU策略](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/lru.md)
 - 005 >> [FFC-DCP动态池](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/ffc_dcp.md)
