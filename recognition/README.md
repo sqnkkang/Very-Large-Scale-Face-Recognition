@@ -31,11 +31,11 @@ tqdm
 
 - 001 >> [数据准备](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/001.md)
 - 002 >> [模型架构](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/002.md)
-- 003 >> [数据加载器](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/dataloader.md)
-- 004 >> [LRU策略](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/lru.md)
-- 005 >> [FFC-DCP动态池](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/ffc_dcp.md)
-- 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/train.md)
-- 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/test.md)
+- 003 >> [数据加载器](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/003.md)
+- 004 >> [LRU策略](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/004.md)
+- 005 >> [FFC-DCP动态池](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/005.md)
+- 006 >> [训练](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/006.md)
+- 007 >> [测试](https://github.com/sqnkkang/Very-Large-Scale-Face-Recognition/blob/master/recognition/007.md)
 
 ## 4 >> 致谢
 
