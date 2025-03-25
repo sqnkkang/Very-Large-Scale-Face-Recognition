@@ -23,7 +23,7 @@ data/
 
 #### 2.1 >> `creat_lmdb.py` 函数介绍：
 
-**首先** 构建一个 `LMDB` 类，该类实现了以下的函数
+**首先** 构建一个 `LMDB` 类，该类实现了以下的函数：
 
 `__init__` 初始化函数，该函数有一个参数，传递你想保存的 `LMDB` 数据库的地址 `lmdb_path`，然后初始化类内的变量，像是构建的数据库的大小，键值对文件和缓存空间，值得注意的是，我们自己构建的 `LMDB` 类是一个大小动态增加的数据库，缓存空间满了的话进行一次存储，空间不够则自动进行一次扩容，详细信息见下面的 `put` `commit` `close` 函数
 
@@ -90,7 +90,7 @@ class LMDB:
     ...
 ```
 
-**其次** 创建 `make_lmdb` 函数，该函数从 `data/` 下读取所有的子目录作为标签，定义新的标签为 `next_label` 创建最后的 `kv.txt` 文件，需要注意的是，这个 `kv.txt` 文件是最后的键值对，也就是 `key->next_label`，`LMDB` 里面用到的临时 `kv` 文件存储的是 `key->image_data` 是为了将图片流存储到 `LMDB` 里面，希望读者不要搞混淆。之后对于每个子目录，以子目录作为根目录，其下的照片都是同一类别，提取之后使用 `LMDB` 数据库里面的 `put` 函数存放即可，同时将当前的键与标签的关系记录到 `kv.txt` 里面。
+**其次** 创建 `make_lmdb` 函数，该函数从 `data/` 下读取所有的子目录作为标签，定义新的标签为 `next_label` 创建最后的 `kv.txt` 文件，需要注意的是，这个 `kv.txt` 文件是最后的键值对，也就是 `key->next_label`，`LMDB` 里面用到的临时 `kv` 文件存储的是 `key->image_data` 是为了将图片流存储到 `LMDB` 里面，希望读者不要搞混淆。之后对于每个子目录，以子目录作为根目录，其下的照片都是同一类别，提取之后使用 `LMDB` 数据库里面的 `put` 函数存放即可，同时将当前的键与标签的关系记录到 `kv.txt` 里面，需要注意的是，存储的时候我们进行了编码。
 
 ```python
 ...
@@ -120,6 +120,29 @@ def make_lmdb(image_src_dir, path_to_lmdb, db_name):
                 next_label += 1
     db.close()
     kv.close()
+```
+#### 2.2 >> `test_lmdb.py` 函数介绍：
+
+创建 `read_lmdb` 函数，该函数先只读打开数据库环境，然后将事务创建为环境的开始位置，使用 `txn.get(key)` 得到编码后的图片信息，之后解码即可，可以使用 `cv2.imshow()` 展示图片的信息，来测试我们是不是创建数据库成功，能够成功的从里面取得数据。
+
+```python
+def read_lmdb(lmdb_path, kv_file_path):
+    env = lmdb.open(lmdb_path, readonly=True)
+    txn = env.begin()
+    with open(kv_file_path, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        key, label = line.strip().split()
+        value = txn.get(key.encode('utf-8'))
+        if value is None:
+            print(f"Key {key} is not in lmdb")
+            continue
+        img = cv2.imdecode(np.frombuffer(value, dtype=np.uint8), cv2.IMREAD_COLOR)
+        cv2.imshow(f"Image {key} (Label: {label})", img)
+        print(f"Key: {key}, Label: {label}")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    env.close()
 ```
 
 ## 3 >> 构建步骤
