@@ -7,7 +7,7 @@
 - 硬件配置
 ```
 RTX 3070Ti
-cuda126 + 对应版本的cuDNN
+cuda126 + cuDNN
 ```
 
 - 项目环境
