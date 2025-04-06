@@ -15,7 +15,7 @@ cuda126 + cuDNN
 numpy                     1.26.3
 opencv-python             4.11.0.86
 pillow                    11.0.0
-lmdb                      0.9.29
+lmdb                      1.6.2
 python                    3.9.21
 torch                     2.6.0+cu126
 torchaudio                2.6.0+cu126
